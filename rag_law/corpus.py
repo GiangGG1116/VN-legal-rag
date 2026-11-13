@@ -18,12 +18,14 @@ from rag_law.utils import extract_doc_refs, norm_doc_num
 
 DEFAULT_ROOT = Path(r"D:\GiangTV\RAG_LAW_Vnew\data\uts_vlc")
 
-# Docs whose body in the 2026 split is known to be wrong/invalid (Phase 0
-# data validation). See RAG_PLAN.md §2.4 — 45/2019/QH14 (Bộ luật Lao động)
-# contains a provincial plan document instead of the Labor Code.
-DATA_ERROR_DOCS: dict[str, str] = {
-    "45/2019/QH14": "body sai nội dung (thực thể là Kế hoạch 292/KH-UBND tỉnh Lào Cai); chờ thay bằng toàn văn Bộ luật Lao động 2019",
-}
+# Docs whose body in the 2026 split is known to be wrong/invalid.
+# Empty since Phase 0 (2026-11-13): 45/2019/QH14 was the only known-bad body
+# and has been replaced with the real Labor Code 2019 text (source: 2021
+# UTS_VLC split; original parquet archived at data/uts_vlc/data/archive/).
+# The mechanism stays — any future data_error doc is excluded from retrieval
+# and answered with refuse_no_data. Add entries here if a new bad body is
+# found (scripts/validate_corpus.py is the recommended way to detect one).
+DATA_ERROR_DOCS: dict[str, str] = {}
 
 
 @dataclass

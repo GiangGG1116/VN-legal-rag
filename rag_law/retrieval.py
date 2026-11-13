@@ -45,7 +45,7 @@ class LexicalRetriever:
     def _build(self) -> None:
         for dn, content in self.corpus.contents.items():
             if self.corpus.docs[dn].data_error:
-                continue  # never index a known-bad body (45/2019/QH14)
+                continue  # never index a known-bad body (corpus.DATA_ERROR_DOCS)
             law_title = self.corpus.docs[dn].title
             for art in parse_articles(dn, content):
                 toks = tokenize(art.title + " " + art.text)

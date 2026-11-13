@@ -45,8 +45,14 @@ def test_missing_from_corpus_refused(clf, corpus):
 
 
 def test_data_error_doc_refused(clf, corpus):
-    # known-bad body (Labor Code swapped with a provincial plan)
-    d = _decide(clf, corpus, "Điều 3 của Bộ luật Lao động 2019 (45/2019/QH14) quy định nguyên tắc nào?")
+    # Simulate a known-bad body at runtime to keep the data_error gate covered
+    # (Phase 0: the real 45/2019/QH14 body is now the genuine Labor Code).
+    doc = corpus.docs["45/2019/QH14"]
+    doc.data_error = "body sai nội dung (test)"
+    try:
+        d = _decide(clf, corpus, "Điều 3 của Bộ luật Lao động 2019 (45/2019/QH14) quy định nguyên tắc nào?")
+    finally:
+        doc.data_error = None
     assert d.action == "refuse_no_data"
     assert any("lỗi" in r for r in d.reasons)
 

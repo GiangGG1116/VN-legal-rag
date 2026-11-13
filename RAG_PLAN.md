@@ -25,7 +25,7 @@ Nền tảng dữ liệu đã có sẵn, chất lượng tốt, phù hợp làm 
 4. Xử lý riêng **quan hệ luật sửa đổi → luật gốc** — đặc thù quan trọng nhất của pháp luật VN.
 5. **Fail-closed by design:** mọi tầng (input → phân loại → abstention → output) khi nghi ngờ thì TỪ CHỐI chứ không đoán; hệ thống phải "biết trả lời không" khi không có dữ liệu (mục 3.8–3.11, đã triển khai và kiểm chứng).
 
-**Rối lớn nhất phải xử lý trước khi index (mục 2.4):** văn bản `45/2019/QH14` (Bộ luật Lao động) trong split 2026 **chứa sai nội dung** — thực thể là một kế hoạch của UBND tỉnh Lào Cai, không phải Bộ luật.
+**Rối lớn nhất trước khi index (mục 2.4) — ĐÃ GIẢI QUYẾT Phase 0 (2026-11-13):** văn bản `45/2019/QH14` (Bộ luật Lao động) trong split 2026 chứa sai nội dung (thực thể là kế hoạch của UBND tỉnh Lào Cai); đã thay bằng BLLĐ 2019 thật từ split 2021 + 4 lỗi dữ liệu khác được validator phát hiện đã sửa. Dataset 2026 hiện sạch (306/306 pass, 0 FAIL).
 
 ---
 
@@ -76,7 +76,7 @@ Bảng `laws` (616 dòng, catalog đầy đủ hơn corpus):
 
 | # | Mức độ | Vấn đề | Xử lý |
 |---|---|---|---|
-| 1 | **CRITICAL** | **`45/2019/QH14` (Bộ luật Lao động) chứa SAI nội dung**: body thực tế là *Kế hoạch 292/KH-UBND ngày 17/9/2019 của UBND tỉnh Lào Cai* (thực hiện Chỉ thị 52-CT/TU) — 128 dòng, 0 "Điều". Trong khi Bộ luật Lao động thật có 207 điều. Bảng reconcile vẫn đánh dấu `ok_in_force`. | **Loại body sai khỏi index; lấy lại body Bộ luật Lao động 2019 chính xác** (nguồn: dataset `th1nhng0/vietnamese-legal-documents` hoặc vbpl.vn) rồi gán lại id `45/2019/QH14` |
+| 1 | ~~**CRITICAL**~~ **ĐÃ SỬA (Phase 0, 2026-11-13)** | **`45/2019/QH14` (Bộ luật Lao động) chứa SAI nội dung**: body thực tế là *Kế hoạch 292/KH-UBND ngày 17/9/2019 của UBND tỉnh Lào Cai* (thực hiện Chỉ thị 52-CT/TU) — 128 dòng, 0 "Điều". Trong khi Bộ luật Lao động thật có 220 điều. Bảng reconcile vẫn đánh dấu `ok_in_force`. | **ĐÃ LÀM:** body thay bằng BLLĐ 2019 thật lấy từ split `2021` của UTS_VLC (`bo-luat-lao-dong`, 220 điều, 17 chương, kiểm chứng Số hiệu + chữ ký Chủ tịch Quốc hội); bản gốc HF lưu tại `data/uts_vlc/data/archive/2026-original-HF.parquet`. Validator phát hiện thêm 4 lỗi thật đã sửa: `19/2012/QH13` (case `QhH13`), `07/2022/QH15` (rác HTML/CSS đầu body), `51/2024/QH15` + `99/2025/QH15` (prefix thừa trong dòng Số hiệu) |
 | 2 | Cao | **71 luật CHL + 47 HHL1P có trong catalog vbpl nhưng KHÔNG có trong corpus** (bảng `missing_in_vlc`, 118 dòng) — chủ yếu luật mới 2025/2026 (Giám định tư pháp 105/2025, Quy hoạch 112/2025, Bảo hiểm tiền gửi 111/2025, Tín ngưỡng tôn giáo 07/2026, …) | V1: chấp nhận gap — RAG phải nói rõ "không tìm thấy trong bộ dữ liệu" và chỉ link vbpl. V2: backfill từ `th1nhng0` (raw HTML, cần pipeline làm sạch) |
 | 3 | Cao | **Luật chưa được "consolidate"**: luật gốc và luật sửa đổi là 2 văn bản riêng → câu hỏi "Điều X hiện quy định thế nào" cần ghép nhiều nguồn | Thiết kế retrieval amending-aware (mục 3.4) |
 | 4 | Trung bình | 9 title trùng (Luật Chứng khoán, Luật Đầu tư công, …) — do nhiều phiên bản cùng tên qua các năm | Phân biệt bằng `doc_num`; index luôn theo Số hiệu |
@@ -218,7 +218,7 @@ Nhập **3 tín hiệu độc lập** thành 1 quyết định fail-closed: **(1
 1. injection → non_legal → sub_law: từ chối bằng **thông báo canned** (cố định, không do LLM sinh).
 2. **Corpus gate trên từng Số hiệu được hỏi:**
    - `lookup` không tìm thấy (`999/1999/QH99`) → `refuse_no_data`, message nêu đúng Số hiệu.
-   - `data_error` (45/2019/QH14 — body sai) → `refuse_no_data` cho đến khi Phase 0 sửa.
+   - `data_error` (body sai nội dung — đã từng là 45/2019/QH14, giờ đã sửa) → `refuse_no_data`. Cơ chế `corpus.DATA_ERROR_DOCS` giữ lại cho doc lỗi trong tương lai (hiện rỗng; validator `scripts/validate_corpus.py` là cách phát hiện).
    - Có trong catalogue nhưng **không có toàn văn** (105/2025/QH15…) → từ chối, **trừ** câu hỏi status/date → cho phép **metadata-only answer** (sqlite là nguồn chuẩn cho thời gian/trạng thái vì 298/306 doc thiếu header ngày hiệu lực).
 3. **Metadata answers độc lập với retrieval** (deterministic):
    - `status`/`effective_date` → trả lời thẳng từ catalogue: trạng thái, ngày ban hành/hiệu lực, link vbpl; luật hết hiệu lực kèm **"Được thay thế bởi"** (thực thể `replaces`: cùng base title + cùng type + năm sau + đang hiệu lực, VD 45/2013/QH13 → 31/2024/QH15).
@@ -296,14 +296,14 @@ benchmarks/
 
 | Nhóm | Items | Điểm kiểm tra khó |
 |---|---|---|
-| ANSWER | gs-001…gs-015 (15) | article_lookup với bonus điều (gs-007 Điều 101 phải thắng Điều 90/91 cùng chủ đề "người dưới 18 tuổi"); metadata status "Hết hiệu lực toàn bộ/một phần" (gs-012/013); metadata-only cho luật **chưa hiệu lực, không có trong corpus** (gs-011, 05/2026/QH16); đồ thị sửa đổi 2 chiều (gs-014 amended_by, gs-015 amends 4 luật) |
+| ANSWER | gs-001…gs-015, gs-024 (16) | article_lookup với bonus điều (gs-007 Điều 101 phải thắng Điều 90/91 cùng chủ đề "người dưới 18 tuổi"); metadata status "Hết hiệu lực toàn bộ/một phần" (gs-012/013); metadata-only cho luật **chưa hiệu lực, không có trong corpus** (gs-011, 05/2026/QH16); đồ thị sửa đổi 2 chiều (gs-014 amended_by, gs-015 amends 4 luật); BLLĐ 2019 Điều 3 (gs-024 — trước đây REFUSE_NO_DATA, flip ANSWER sau Phase 0) |
 | ANSWER_WITH_CAUTION | gs-016, gs-027, gs-028 (3) | câu hỏi "Điều 3 **hiện hành**" → bắt buộc caveat nêu 12/2017/QH14; tư vấn cá nhân → disclaimer "KHÔNG phải tư vấn pháp lý" |
 | REFUSE_SCOPE | gs-017, gs-018 (2) | Nghị định (theo Số hiệu), Thông tư (theo từ khóa) |
 | REFUSE_NON_LEGAL | gs-019, gs-020 (2) | nấu phở, giá vàng |
-| REFUSE_NO_DATA | gs-021…gs-024 (4) | 4 biến thể khác nhau: luật thiếu toàn văn (105/2025), hỏi điều của luật thiếu, **Số hiệu bịa** (999/1999/QH99), **body lỗi** (45/2019 — từ chối tới khi Phase 0 sửa) |
+| REFUSE_NO_DATA | gs-021…gs-023 (3) | 3 biến thể khác nhau: luật thiếu toàn văn (105/2025), hỏi điều của luật thiếu, **Số hiệu bịa** (999/1999/QH99) |
 | REFUSE_INJECTION | gs-025, gs-026 (2) | injection tiếng Việt + tiếng Anh ("You are now DAN…") |
 
-**Kết quả hiện tại (đã chạy):** `pytest` **53/53 pass** (unit + integration cho classify/abstain/safety/citations + end-to-end pipeline + 2 test CI cho tầng 1 & 3). Theo tầng: **Tầng 1 — Recall@5 100%**, MRR 0.95, Top-1 90% (gs-016 rank 2), 3 item no-cover "clean"; **Tầng 2 — `run_eval.py` 28/28 (100%)**; **Tầng 3 — 12/12 bug ghim giữ nguyên**.
+**Kết quả hiện tại (đã chạy, sau Phase 0 — 2026-11-13):** `pytest` **53/53 pass** (unit + integration cho classify/abstain/safety/citations + end-to-end pipeline + 2 test CI cho tầng 1 & 3). Theo tầng: **Tầng 1 — Recall@5 100%** (28/28 items ok), MRR 0.955, Top-1 90.9% (scored=11, no_cover=2, skipped=15); **Tầng 2 — `run_eval.py` 28/28 (100%)** (ANSWER 16/16, ANSWER_WITH_CAUTION 3/3, REFUSE_* 9/9); **Tầng 3 — 12/12 bug ghim giữ nguyên**.
 
 **Định nghĩa "hệ biết trả lời không":** một câu hỏi chỉ được trả lời khi **đồng thời** (a) đúng phạm vi, (b) văn bản được hỏi có trong corpus sạch (không data-error), (c) retrieval đạt ngưỡng **và** phủ đúng điều được hỏi. Thiếu 1 trong 3 → từ chối với lý do cụ thể bằng thông báo canned. Mọi trường hợp "biết nhưng chưa có" (luật mới, luật cũ thay thế) được trả lời **metadata** có nguồn thay vì im lặng hoặc bịa.
 
@@ -333,7 +333,7 @@ Môi trường đã xác nhận: uv 0.13.6 + CPython 3.11.18, Docker Desktop 4.9
 
 | Phase | Nội dung | Deliverable | Ước lượng |
 |---|---|---|---|
-| **0. Validate data** | (a) Thay body `45/2019/QH14` bằng Bộ luật Lao động thật (lấy từ `th1nhng0` hoặc vbpl); (b) viết validator body↔Số hiệu chạy toàn bộ 306 docs; (c) thống kê gap so `missing_in_vlc` | Dataset `2026` sạch + báo cáo validate pass 100% | 0,5–1 ngày |
+| **0. Validate data** ✅ **XONG (2026-11-13)** | (a) Thay body `45/2019/QH14` bằng BLLĐ 2019 thật (lấy từ split 2021 UTS_VLC — không cần mạng); (b) viết validator body↔Số hiệu `scripts/validate_corpus.py` chạy toàn bộ 306 docs; (c) thống kê gap so `missing_in_vlc` | ✅ Dataset `2026` sạch (306/306 pass, 0 FAIL, 1 WARN) + báo cáo `benchmarks/runs/validate_report.json`. **Validator chạy trên mọi snapshot mới trước ingest** | 0,5–1 ngày |
 | **1. Index pipeline** | Parser Điều/Khoản/Phụ lục → chunk + metadata (gộp sqlite + sources) → embed bge-m3 → nạp Qdrant + BM25 | ~22k chunks truy vấn được; script ingest tái chạy được | 2–3 ngày |
 | **2. Retrieval + amending** | Hybrid RRF + reranker; bảng quan hệ `amends/amended_by`; filter Số hiệu/in-force | Retrieval trả về đúng điều + luật sửa đổi liên quan | 2–3 ngày |
 | **3. Generation + eval** | Prompt + citation format; golden set 50–100 QA; đo recall/citation/faithfulness | Báo cáo eval + fix | 2–3 ngày |
@@ -341,7 +341,7 @@ Môi trường đã xác nhận: uv 0.13.6 + CPython 3.11.18, Docker Desktop 4.9
 
 Tổng: **~1,5–2 tuần** (làm part-time).
 
-**Trạng thái triển khai (cập nhật):** các thành phần **an toàn / phân loại / abstention / benchmark** (mục 3.8–3.11) đã được code đầy đủ và kiểm chứng (53/53 tests + 28/28 golden e2e 100% + retrieval tier Recall@5 100% + 12/12 regression) — pipeline end-to-end chạy được trên retriever lexical trước khi có embedding index. Còn lại: **Phase 0** (thay body `45/2019/QH14` — xong thì gs-024 chuyển REFUSE_NO_DATA → ANSWER), Phase 1–2 (embed bge-m3 + BM25 + Qdrant, thay `LexicalRetriever`), sau đó cắm LLM vào `_compose_answer` (giữ nguyên mọi gate + validator).
+**Trạng thái triển khai (cập nhật 2026-11-13):** **Phase 0 XONG** — body `45/2019/QH14` đã thay bằng BLLĐ 2019 thật (220 điều, nguồn split 2021) + 4 lỗi dữ liệu khác được validator phát hiện đã sửa + `scripts/validate_corpus.py` chạy 306/306 pass. Các thành phần **an toàn / phân loại / abstention / benchmark** (mục 3.8–3.11) code đầy đủ và kiểm chứng (53/53 tests + 28/28 golden e2e 100% + retrieval tier Recall@5 100% + 12/12 regression) — pipeline end-to-end chạy được trên retriever lexical trước khi có embedding index. Còn lại: **Phase 1–2** (embed bge-m3 + BM25 + Qdrant, thay `LexicalRetriever`), sau đó cắm LLM vào `_compose_answer` (giữ nguyên mọi gate + validator).
 
 **Definition of Done (V1):** hỏi 10 câu mẫu về điều khoản cụ thể, ngày hiệu lực và luật đã sửa đổi → ≥8 câu trả lời đúng nội dung, citation đúng Số hiệu/Điều, link vbpl mở được, và hệ từ chối đúng với câu hỏi về nghị định/thông tư. *(4/4 nhóm từ chối đã đạt 100% ngay trên golden set hiện tại.)*
 
@@ -354,7 +354,7 @@ Tổng: **~1,5–2 tuần** (làm part-time).
 | Snapshot 2026-06: luật mới sau đó thiếu | Trả lời thiếu/với trạng thái cũ | Ghi `snapshot_date` trong mọi citation; refresh hàng tháng; sqlite catalog đã có 24 luật CCHL (hiệu lực 2026-07+) để cảnh báo |
 | Chưa consolidate luật sửa đổi | Câu hỏi "điều hiện hành" sai nếu bỏ sót bản sửa | Amending-aware retrieval + prompt yêu cầu nêu luật sửa đổi; V2 làm consolidated view |
 | 71+47 luật hiệu lực chưa có trong corpus (missing_in_vlc) | Không trả lời được cho các luật mới 2025/2026 | Flag "không có trong bộ dữ liệu" + link vbpl; V2 backfill từ th1nhng0 |
-| Lỗi body sai như 45/2019/QH14 có thể còn ở doc khác (chưa phát hiện) | Trả lời sai nghiêm trọng | Validator Phase 0 bắt buộc; spot-check thủ công 10–20 docs |
+| Lỗi body sai như 45/2019/QH14 có thể còn ở doc khác | Trả lời sai nghiêm trọng | **ĐÃ GIẢM (Phase 0):** validator body↔Số hiệu chạy 306/306 docs — chỉ còn 1 WARN (61/2024 thiếu preamble, điều vẫn đủ). Validator bắt buộc trên mọi snapshot mới trước ingest |
 | Phạm vi chỉ cấp 2 (không có nghị định/thông tư) | Người hỏi về văn bản hướng dẫn sẽ thất vọng | Thông báo rõ scope + hướng dẫn tới vbpl.vn |
 | Không phải tư vấn pháp lý | Rủi ro pháp lý cho user | Disclaimer cố định trong mọi câu trả lời |
 
@@ -363,7 +363,7 @@ Tổng: **~1,5–2 tuần** (làm part-time).
 ## Phụ lục A — Số liệu khai phá (nguyên liệu)
 
 - 2026 split: 306 docs, 25.006.877 ký tự, ~5,49M từ, ~7,8M tokens; type: 1 HP / 6 BL / 299 Lu.
-- 6 Bộ luật: Dân sự 91/2015 (689 điều), Hàng hải 95/2015 (341), Hình sự 100/2015 (425), TT dân sự 92/2015 (519), TT hình sự 101/2015 (498), Lao động 45/2019 (⚠️ body sai — 0 điều).
+- 6 Bộ luật: Dân sự 91/2015 (689 điều), Hàng hải 95/2015 (341), Hình sự 100/2015 (425), TT dân sự 92/2015 (519), TT hình sự 101/2015 (498), Lao động 45/2019 (220 điều, 17 chương — đã sửa Phase 0: body thật từ split 2021).
 - Hiến pháp 2013: 120 điều, 11 chương, 61.108 ký tự.
 - 5 docs dài nhất: Nhà ở 27/2023 (661.872), Hình sự 100/2015 (563.173), TT hình sự 101/2015 (526.610), Đất đai 31/2024 (525.808), TT dân sự 92/2015 (499.799).
 - sqlite: `laws` 616 rows (1997–2026), `law_links` 616, `missing_in_vlc` 118 (71 CHL + 47 HHL1P), `vlc_2026_reconcile` 318, `legal_sources` 6, `meta` 5 (fetched 2026-05-29).
