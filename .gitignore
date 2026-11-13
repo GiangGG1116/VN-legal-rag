@@ -1,0 +1,25 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# ===== Benchmark: artifact khi chạy (audit JSONL, báo cáo --json) — KHÔNG commit =====
+# Dataset trong benchmarks/data/ (golden, regressions, generated) là SOURCE — vẫn commit.
+benchmarks/runs/*
+!benchmarks/runs/.gitkeep
+
+# ===== Dữ liệu tải về (UTS_VLC từ HuggingFace / vbpl — tải lại được, KHÔNG commit) =====
+# Bỏ chú thích dòng dưới nếu bạn muốn commit corpus vào repo.
+data/uts_vlc/
+
+# ===== Tools / phiên làm việc =====
+.qwen/
+*.log
+*.tmp
+
+# ===== Windows =====
+Thumbs.db
+desktop.ini
